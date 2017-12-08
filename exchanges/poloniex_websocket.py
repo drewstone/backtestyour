@@ -6,7 +6,6 @@ import urllib.request
 from collections import OrderedDict
 
 import websockets
-from common import *
 
 GET_TICKERS_URL = 'https://poloniex.com/public?command=returnTicker'
 API_LINK = 'wss://api2.poloniex.com'
@@ -16,26 +15,10 @@ TICKER_OUTPUT = 'TICKER UPDATE {}={}(last),{}(lowestAsk),{}(highestBid),{}(perce
 TRADE_OUTPUT = 'TRADE {}={}(tradeId),{}(bookSide),{}(price),{}(size),{}(timestamp)'
 
 poloniex_market_pairs = [
-    "USDT_BTC",
-    "USDT_ETH",
-    "USDT_XRP",
-    "USDT_XMR",
-    "USDT_LTC",
-    "USDT_ETC",
-    "USDT_DASH",
-    "USDT_ZEC",
-    "ETH_ETC",
-    "ETC_ZEC",
-    "XMR_ZEC",
-    "XMR_DASH",
-    "XMR_LTC",
-    "BTC_ETH",
-    "BTC_XMR",
-    "BTC_ETC",
-    "BTC_LTC",
-    "BTC_XRP",
-    "BTC_ZEC",
-    "BTC_DASH"
+    "USDT_BTC", "USDT_ETH", "USDT_XRP", "USDT_XMR", "USDT_LTC", "USDT_ETC", "USDT_DASH", "USDT_ZEC",
+    "ETH_ETC", "ETC_ZEC",
+    "XMR_ZEC", "XMR_DASH", "XMR_LTC",
+    "BTC_ETH", "BTC_XMR", "BTC_ETC", "BTC_LTC", "BTC_XRP", "BTC_ZEC", "BTC_DASH"
 ]
 
 class PoloniexSubscriber(object):
