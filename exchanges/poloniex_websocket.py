@@ -6,6 +6,7 @@ import urllib.request
 from collections import OrderedDict
 
 import websockets
+from common import *
 
 GET_TICKERS_URL = 'https://poloniex.com/public?command=returnTicker'
 API_LINK = 'wss://api2.poloniex.com'
@@ -14,6 +15,28 @@ TICKER_SUBSCRIBE = 1002
 TICKER_OUTPUT = 'TICKER UPDATE {}={}(last),{}(lowestAsk),{}(highestBid),{}(percentChange),{}(baseVolume),{}(quoteVolume),{}(isFrozen),{}(high24hr),{}(low24hr)'
 TRADE_OUTPUT = 'TRADE {}={}(tradeId),{}(bookSide),{}(price),{}(size),{}(timestamp)'
 
+poloniex_market_pairs = [
+    "USDT_BTC",
+    "USDT_ETH",
+    "USDT_XRP",
+    "USDT_XMR",
+    "USDT_LTC",
+    "USDT_ETC",
+    "USDT_DASH",
+    "USDT_ZEC",
+    "ETH_ETC",
+    "ETC_ZEC",
+    "XMR_ZEC",
+    "XMR_DASH",
+    "XMR_LTC",
+    "BTC_ETH",
+    "BTC_XMR",
+    "BTC_ETC",
+    "BTC_LTC",
+    "BTC_XRP",
+    "BTC_ZEC",
+    "BTC_DASH"
+]
 
 class PoloniexSubscriber(object):
 
@@ -21,9 +44,12 @@ class PoloniexSubscriber(object):
         tickers_data = self._get_all_tickers()
         self._tickers_list = []
         self._tickers_id = {}  # map to tranlate id (integer) to ticker name
+
         for ticker, data in tickers_data.items():
-            self._tickers_id[data['id']] = ticker
-            self._tickers_list.append(ticker)
+            if ticker in poloniex_market_pairs:
+                self._tickers_id[data['id']] = ticker
+                self._tickers_list.append(ticker)
+
         self._sub_thread = None
         self._event_loop = None
         self._last_seq_dic = {}
@@ -56,9 +82,9 @@ class PoloniexSubscriber(object):
             await websocket.send(SUBSCRIBE_COMMAND.replace(
                 '$', str(TICKER_SUBSCRIBE)))
             for ticker in self._tickers_list:
-                print(ticker)
                 req = SUBSCRIBE_COMMAND.replace(
                     '$', '\"' + ticker + '\"')
+                print(req)
                 await websocket.send(req)
 
             # now parse received data
@@ -95,7 +121,7 @@ class PoloniexSubscriber(object):
                     # low24hr = values[9]
                     ticker_id = self._tickers_id[ticker_id_int]
                     out_list = [ticker_id] + values[1:]
-                    print(TICKER_OUTPUT.format(*out_list))
+                    # print(TICKER_OUTPUT.format(*out_list))
                 else:
                     ticker_id = self._tickers_id[data[0]]
 
