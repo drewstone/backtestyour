@@ -36,7 +36,10 @@ class OrderManager(object):
 	def get_info(self):
 		return (self.lob.time, self.lob.getBestBid(), self.lob.getBestAsk())
 
+	def get_lob(self):
+		return self.lob
+
 	def add_order(self, order_type, trading_id, price, quantity):
 		quote = self.get_quote(order_type, trading_id, price, quantity)
-		self.lob.processOrder(quote, fromData=False, verbose=True)
+		self.lob.processOrder(quote, fromData=False, verbose=False)
 		return quote

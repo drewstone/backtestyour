@@ -13,7 +13,7 @@ from io import StringIO
 from .ordertree import OrderTree
 
 class OrderBook(object):
-    def __init__(self, tick_size = 0.0001):
+    def __init__(self, tick_size = 0.00000000000000001):
         self.tape = deque(maxlen=None) # Index [0] is most recent trade
         self.bids = OrderTree()
         self.asks = OrderTree()

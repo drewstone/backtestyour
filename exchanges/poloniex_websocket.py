@@ -1,11 +1,18 @@
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+import sys
 import asyncio
 import json
 import threading
+import time
 import urllib
 import urllib.request
 from collections import OrderedDict
 
 import websockets
+from trading.core.ordermanager import OrderManager
 
 GET_TICKERS_URL = 'https://poloniex.com/public?command=returnTicker'
 API_LINK = 'wss://api2.poloniex.com'
@@ -33,6 +40,10 @@ class PoloniexSubscriber(object):
                 self._tickers_id[data['id']] = ticker
                 self._tickers_list.append(ticker)
 
+        self.ob = {}
+        for ticker in self._tickers_list:
+            self.ob[ticker] = OrderManager()
+
         self._sub_thread = None
         self._event_loop = None
         self._last_seq_dic = {}
@@ -59,21 +70,24 @@ class PoloniexSubscriber(object):
         asyncio.set_event_loop(self._event_loop)
         self._event_loop.run_until_complete(self._subscribe())
 
+    def get_prices(self):
+        return list(map(lambda key: {key: self.ob[key].get_info()}, self.ob.keys()))
+
+
     async def _subscribe(self):
         async with websockets.connect(API_LINK) as websocket:
             # first subscribe to ticker channel and all tickers update channels
-            await websocket.send(SUBSCRIBE_COMMAND.replace(
-                '$', str(TICKER_SUBSCRIBE)))
+            await websocket.send(SUBSCRIBE_COMMAND.replace('$', str(TICKER_SUBSCRIBE)))
             for ticker in self._tickers_list:
-                req = SUBSCRIBE_COMMAND.replace(
-                    '$', '\"' + ticker + '\"')
-                print(req)
+                req = SUBSCRIBE_COMMAND.replace('$', '\"' + ticker + '\"')
                 await websocket.send(req)
 
             # now parse received data
             while True:
                 message = await websocket.recv()
+
                 data = json.loads(message, object_pairs_hook=OrderedDict)
+
                 if 'error' in data:
                     raise Exception('error arrived message={}'.format(message))
 
@@ -107,7 +121,6 @@ class PoloniexSubscriber(object):
                     # print(TICKER_OUTPUT.format(*out_list))
                 else:
                     ticker_id = self._tickers_id[data[0]]
-
                     seq = data[1]
 
                     for update in data[2]:
@@ -115,14 +128,14 @@ class PoloniexSubscriber(object):
                         if update[0] == 'i':
                             # UPDATE[1]['currencyPair'] is the ticker name
                             self._last_seq_dic[ticker_id] = seq
-                            asks = []
+                            # ASKS
+                            for price, size in [order for order in update[1]['orderBook'][0].items()]:
+                                self.ob[ticker_id].add_order('limit', ticker_id, float(price), -float(size))
 
-                            for price, size in update[1]['orderBook'][0].items():
-                                asks.append([price, size])
+                            # BIDS
+                            for price, size in [order for order in update[1]['orderBook'][1].items()]:
+                                self.ob[ticker_id].add_order('limit', ticker_id, float(price), float(size))
 
-                            bids = []
-                            for price, size in update[1]['orderBook'][1].items():
-                                bids.append([price, size])
                             # printing just 5 levels(this book can be 3000 levels)
                             # print('{} book:'.format(ticker_id))
                             # print('asks((price,size)):')
@@ -137,9 +150,12 @@ class PoloniexSubscriber(object):
                                 raise Exception('Problem with seq number prev_seq={},message={}'.format(
                                     self._last_seq_dic[ticker_id], message))
 
-                            price = update[2]
+                            price = float(update[2])
                             side = 'bid' if update[1] == 1 else 'ask'
-                            size = update[3]
+                            size = float(update[3])
+                            print(data)
+                            print(ticker_id, price, side, size)
+
                             # this mean remove
                             # if size == '0.00000000':
                             #     print('Remove {},side={},price={}'.format(
@@ -153,7 +169,7 @@ class PoloniexSubscriber(object):
                             if self._last_seq_dic[ticker_id] + 1 != seq:
                                 raise Exception('Problem with seq number prev_seq={},message={}'.format(
                                     self._last_seq_dic[ticker_id], message))
-
+                            print(update)
                             trade_id = update[1]
                             book_side = 'bid' if update[2] == 1 else 'ask'
                             price = update[3]
@@ -161,7 +177,7 @@ class PoloniexSubscriber(object):
                             timestamp = update[5]
                             out_list = [ticker_id, trade_id,
                                         book_side, price, size, timestamp]
-                            print(TRADE_OUTPUT.format(*out_list))
+                            # print(TRADE_OUTPUT.format(*out_list))
 
                     self._last_seq_dic[ticker_id] = seq
 
@@ -170,8 +186,9 @@ if __name__ == '__main__':
     sub = PoloniexSubscriber()
     sub.start_subscribe()
     try:
-        while True:
-            pass
+        for i in range(10):
+            time.sleep(1)
     except KeyboardInterrupt:
         # quit
         pass
+    print(sub.get_prices())
